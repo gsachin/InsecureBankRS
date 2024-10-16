@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Base64;
@@ -22,16 +21,13 @@ import android.widget.Toast;
 import androidx.security.crypto.EncryptedSharedPreferences;
 import androidx.security.crypto.MasterKeys;
 
-import com.security.insecurebankrs.FilePrefActivity;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.NoSuchAlgorithmException;
@@ -45,17 +41,13 @@ import java.util.regex.Pattern;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
-/**
- * Secure ChangePassword class
- */
 public class ChangePassword extends Activity {
 	EditText changePasswordText;
 	TextView textViewUsername;
 	Button changePasswordButton;
 
-	// Regex for strong password
 	private static final String PASSWORD_PATTERN =
-			"((?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%]).{8,20})";
+			"((?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!]).{12,20})";  // Enforcing a stronger pattern
 	private Pattern pattern;
 	private Matcher matcher;
 
@@ -64,7 +56,7 @@ public class ChangePassword extends Activity {
 	BufferedReader reader;
 	String serverip = "";
 	String serverport = "";
-	String protocol = "https://";  // Use HTTPS for secure communication
+	String protocol = "https://";
 	SharedPreferences serverDetails;
 
 	@Override
@@ -73,7 +65,6 @@ public class ChangePassword extends Activity {
 		setContentView(R.layout.activity_change_password);
 
 		try {
-			// Use encrypted SharedPreferences for secure storage of sensitive data
 			String masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC);
 			serverDetails = EncryptedSharedPreferences.create(
 					"secure_prefs",
@@ -86,7 +77,6 @@ public class ChangePassword extends Activity {
 			e.printStackTrace();
 		}
 
-		// Get server details from encrypted SharedPreferences
 		serverip = serverDetails.getString("serverip", null);
 		serverport = serverDetails.getString("serverport", null);
 
@@ -96,7 +86,6 @@ public class ChangePassword extends Activity {
 		textViewUsername = findViewById(R.id.textView_Username);
 		textViewUsername.setText(uname);
 
-		// Manage the change password button click
 		changePasswordButton = findViewById(R.id.button_newPasswordSubmit);
 		changePasswordButton.setOnClickListener(new View.OnClickListener() {
 			@Override
@@ -132,11 +121,10 @@ public class ChangePassword extends Activity {
 				urlConnection.setDoOutput(true);
 				urlConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 
-				// Hash the password
 				String hashedPassword = hashPassword(changePasswordText.getText().toString());
 
 				List<String> params = new ArrayList<>();
-				params.add("username=" + username);
+				params.add("username=" + TextUtils.htmlEncode(username)); // Ensure input sanitization
 				params.add("newpassword=" + hashedPassword);
 				byte[] postDataBytes = TextUtils.join("&", params).getBytes("UTF-8");
 
@@ -154,9 +142,9 @@ public class ChangePassword extends Activity {
 							Toast.makeText(getApplicationContext(), message + ". Restart application to Continue.", Toast.LENGTH_LONG).show();
 
 							TelephonyManager phoneManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-							String phoneNumber = phoneManager.getLine1Number();
+							// Remove deprecated method getLine1Number(), better approach to handle user phone number.
+							String phoneNumber = "[PHONE_NUMBER_REDACTED]"; // Placeholder, handle phone number safely
 
-							// Avoid sending sensitive information like passwords in SMS
 							if (!TextUtils.isEmpty(phoneNumber)) {
 								broadcastChangePasswordSMS(phoneNumber, "[REDACTED]");
 							}
@@ -189,8 +177,9 @@ public class ChangePassword extends Activity {
 			char[] chars = password.toCharArray();
 			byte[] salt = getSalt();
 
+			// Switched to PBKDF2WithHmacSHA256 for stronger security
 			PBEKeySpec spec = new PBEKeySpec(chars, salt, iterations, 64 * 8);
-			SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+			SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
 			byte[] hash = skf.generateSecret(spec).getEncoded();
 			return Base64.encodeToString(hash, Base64.DEFAULT);
 		}
@@ -204,7 +193,7 @@ public class ChangePassword extends Activity {
 	}
 
 	private void broadcastChangePasswordSMS(String phoneNumber, String message) {
-		// Never send passwords via SMS
+		// Never send sensitive information like passwords via SMS
 		Intent smsIntent = new Intent();
 		smsIntent.setAction("theBroadcast");
 		smsIntent.putExtra("phonenumber", phoneNumber);
