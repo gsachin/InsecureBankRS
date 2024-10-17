@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
     <string name="app_name">InsecureBankrs</string>
     <string name="hello_world">Hello world!</string>
     <string name="loginscreen_username">Username:</string>
@@ -24,5 +23,5 @@
     <string name="title_activity_change_password">ChangePassword</string>
     <string name="title_activity_exit">ExitActivity</string>
     <string name="action_kill">Exit Application</string>
-
+    <string name="provider_name">com.security.insecurebankrs.TrackUserContentProvider</string>
 </resources>
